@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import {mainRegister} from "../module/Junctor";
 
 /**
  * Set `__static` path to static files in production
@@ -22,6 +23,8 @@ function createWindow () {
     useContentSize: true,
     width: 1000
   })
+
+  console.log('Hello World', mainRegister(mainWindow))
 
   mainWindow.loadURL(winURL)
 

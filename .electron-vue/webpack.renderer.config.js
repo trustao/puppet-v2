@@ -3,14 +3,14 @@
 process.env.BABEL_ENV = 'renderer'
 
 const path = require('path')
-const { dependencies } = require('../package.json')
+const {dependencies} = require('../package.json')
 const webpack = require('webpack')
 
 const MinifyPlugin = require("babel-minify-webpack-plugin")
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const { VueLoaderPlugin } = require('vue-loader')
+const {VueLoaderPlugin} = require('vue-loader')
 
 /**
  * List of node_modules to include in webpack bundle
@@ -52,6 +52,11 @@ let rendererConfig = {
         use: 'vue-html-loader'
       },
       {
+        test: /\.ts$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
+      },
+      {
         test: /\.js$/,
         use: 'babel-loader',
         exclude: /node_modules/
@@ -59,6 +64,14 @@ let rendererConfig = {
       {
         test: /\.node$/,
         use: 'node-loader'
+      },
+      {
+        test: /\.tsx?$/,
+        loader: 'ts-loader',
+        exclude: /node_modules/,
+        options: {
+          appendTsSuffixTo: [/\.vue$/],
+        }
       },
       {
         test: /\.vue$/,
@@ -159,10 +172,16 @@ let rendererConfig = {
 if (process.env.NODE_ENV !== 'production') {
   rendererConfig.plugins.push(
     new webpack.DefinePlugin({
-      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
+      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`,
     })
   )
 }
+
+rendererConfig.plugins.push(
+  new webpack.DefinePlugin({
+    '__docPath':  path.resolve(__dirname, process.env.NODE_ENV === 'development' ? '../static/doc' : '../../../../doc')
+  })
+)
 
 /**
  * Adjust rendererConfig for production settings

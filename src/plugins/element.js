@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import Element from 'element-ui'
-import '../element-variables.scss'
+import Antd from 'ant-design-vue'
+import 'ant-design-vue/dist/antd.css'
 
-Vue.use(Element)
+Vue.use(Antd)

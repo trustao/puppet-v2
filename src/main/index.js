@@ -1,5 +1,8 @@
-import { app, BrowserWindow } from 'electron'
-import {mainRegister} from "../module/Junctor";
+import { app, screen, BrowserWindow } from 'electron'
+import path from "path";
+import {mainWindowRegister} from '../module/Junctor/Main'
+
+// global.__docPath = path.resolve(__dirname,process.env.NODE_ENV === 'development' ? './static/doc' : '../../../doc')
 
 /**
  * Set `__static` path to static files in production
@@ -18,22 +21,74 @@ function createWindow () {
   /**
    * Initial window options
    */
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
   mainWindow = new BrowserWindow({
-    height: 563,
     useContentSize: true,
-    width: 1000
+    width,
+    height: height - 60,
+    // show: false,
+    x: 0,
+    y: 0
   })
-
-  console.log('Hello World', mainRegister(mainWindow))
-
-  mainWindow.loadURL(winURL)
+  mainWindowRegister(mainWindow)
+  mainWindow.loadURL(winURL + '#/taskManage')
 
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  // setTimeout(createNewWindow, 3000)
+  // const welcome = showWelcome(() => {
+  //   mainWindow.show()
+  //   setTimeout(() => {
+  //     welcome.close()
+  //   },100)
+  // })
+
 }
 
-app.on('ready', createWindow)
+function createNewWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
+  const window = new BrowserWindow({
+    useContentSize: true,
+    width,
+    height,
+    // show: false,
+    x: 0,
+    y: 0
+  })
+  mainWindowRegister(mainWindow)
+
+  window.loadURL(winURL + '#/taskManage')
+
+  return window
+}
+
+function showWelcome (callback) {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const welcome = new BrowserWindow({
+    useContentSize: true,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    width,
+    height,
+    x: 0,
+    y: 0
+  })
+  welcome.loadURL(winURL + '#/welcome')
+  setTimeout( () => {
+    callback()
+  }, 4000)
+  return welcome
+}
+
+app.on('ready', () => {
+  console.log('ready')
+  createWindow()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -42,6 +97,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
+  console.log('activate')
   if (mainWindow === null) {
     createWindow()
   }

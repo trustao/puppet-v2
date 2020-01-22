@@ -46,6 +46,9 @@ let mainConfig = {
     new webpack.NoEmitOnErrorsPlugin()
   ],
   resolve: {
+    alias: {
+      '@': path.join(__dirname, '../src'),
+    },
     extensions: ['.ts', '.js', '.json', '.node']
   },
   target: 'electron-main'
@@ -57,10 +60,16 @@ let mainConfig = {
 if (process.env.NODE_ENV !== 'production') {
   mainConfig.plugins.push(
     new webpack.DefinePlugin({
-      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
+      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`,
+      '__docPath': ``
     })
   )
 }
+mainConfig.plugins.push(
+  new webpack.DefinePlugin({
+    '__docPath':  path.resolve(__dirname, process.env.NODE_ENV === 'development' ? '../static/doc' : '../../../../doc')
+  })
+)
 
 /**
  * Adjust mainConfig for production settings

@@ -6,7 +6,7 @@
         ref="webview" :preload="preload"
         nodeintegration nodeIntegrationInSubFrames
         disablewebsecurity
-        src="http://localhost:9900" style="min-width: 1024px;height: 100vh"></webview>
+        src="http://localhost:4202" style="min-width: 1024px;height: 100vh"></webview>
 <!--        src="https://b.jclps.com" style="min-width: 1024px;height: 100vh"></webview>-->
     </div>
     <div class="controller">

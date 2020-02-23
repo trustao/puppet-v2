@@ -48,25 +48,35 @@ export class Step extends EventEmitter {
                 }
                 const res = await action(type, payload);
                 console.log(this.parentTask, res);
-                if (key && type === ActionType.GetText && res) {
-                    if (this.parentTask) {
-                        this.parentTask.state[key].value = res.state;
-                    }
-                    else {
-                        this.state[key].value = res.state;
-                    }
-                }
                 if (!res || res.status === 'FAIL') {
                     console.error('操作失败', res);
                     this.status = 'ERROR';
-                    return;
                 }
+                this.stepDone(res, key, type);
             }
             this.status = 'SUCCESS';
         }
         catch (e) {
             console.error(e);
             this.status = 'ERROR';
+        }
+    }
+    stepDone(res, key, type) {
+        if (key && res) {
+            switch (type) {
+                case ActionType.GetText:
+                case ActionType.GetValue:
+                case ActionType.GetAttr:
+                case ActionType.Download:
+                    if (this.parentTask) {
+                        this.parentTask.state[key].value = res.state.path;
+                    }
+                    else {
+                        this.state[key].value = res.state.path;
+                    }
+                    break;
+                default:
+            }
         }
     }
     setNext(step) {

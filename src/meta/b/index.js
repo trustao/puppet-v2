@@ -159,6 +159,7 @@ function pop() {
       {
         selector: '#ddd',
         type: ActionType.Download,
+        inFrame: true,
         state: {
           downloadPop: {}
         }

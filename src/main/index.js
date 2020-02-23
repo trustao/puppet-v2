@@ -1,6 +1,8 @@
-import { app, screen, BrowserWindow } from 'electron'
+import {app, screen, BrowserWindow, remote} from 'electron'
 import path from "path";
 import {mainWindowRegister} from '../module/Junctor/Main'
+import {getPath, mkdir, pathExists} from "../utils/readFile";
+import moment from "moment";
 
 // global.__docPath = path.resolve(__dirname,process.env.NODE_ENV === 'development' ? './static/doc' : '../../../doc')
 
@@ -37,6 +39,15 @@ function createWindow () {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+
+  // console.log(mainWindow)
+  //
+  // const webContent = mainWindow.webContents;
+  // webContent.session.on('will-download', ((event, item) => {
+  //   event.preventDefault()
+  //
+  // }));
 
   // setTimeout(createNewWindow, 3000)
   // const welcome = showWelcome(() => {

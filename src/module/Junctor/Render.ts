@@ -1,7 +1,7 @@
 import {ipcRenderer, WebviewTag, remote} from 'electron'
 import path from 'path'
 import {ActionTask, ActionType} from "../Action";
-import {DOWNLOAD_CHANEL_KEY, DownloadMsg} from "./Main";
+import {DOWNLOAD_CHANEL_KEY, DownloadMainPayload, DownloadMsg} from "./Main";
 import {getPath, pathExists, mkdir} from '../../utils/readFile'
 import moment from 'moment'
 
@@ -9,7 +9,7 @@ class Hook {
   resolve: (payload: any) => void
   reject: (error: any) => void
 
-  constructor (
+  constructor(
     public uuid: string,
     resolve: (payload: any) => void,
     reject: (error: any) => void
@@ -18,7 +18,7 @@ class Hook {
     this.reject = this.destroyWhenRun(reject)
   }
 
-  destroyWhenRun (fn: (data: any) => void) {
+  destroyWhenRun(fn: (data: any) => void) {
     return (payload: any) => {
       fn(payload)
       const idx = hooksData.findIndex(i => i.uuid === this.uuid)
@@ -31,6 +31,7 @@ const hooksData: Hook[] = []
 const downloadTaskList: Hook[] = []
 const CHANNEL_KEY = 'ACTION'
 
+
 export interface IPCPayload {
   uuid: string,
   status: 'SUCCESS' | 'FAIL',
@@ -42,11 +43,25 @@ let _webView: WebviewTag | null = null
 export const renderRegister = (webview: WebviewTag) => {
   _webView = webview
   listenIPCMsg(webview)
-  listenDownloadEvent()
+  listenM2WIpc()
 };
 
-function pushDownloadUuid (uuid: string, resolve: () => void, reject: () => void) {
-  downloadTaskList.push(new Hook(uuid, resolve, reject))
+function pushDownloadUuid(uuid: string, resolve: () => void, reject: () => void) {
+  const curWindow = remote.getCurrentWindow()
+  setHook(uuid, resolve, reject)
+  const dPayload: DownloadMainPayload = {
+    windowId: curWindow.id,
+    uuid,
+    timeStamp: Date.now()
+  }
+  ipcRenderer.send(DOWNLOAD_CHANEL_KEY, dPayload)
+}
+
+function listenM2WIpc() {
+  ipcRenderer.on(DOWNLOAD_CHANEL_KEY, (events: any, msg: any) => {
+      const {uuid, status, ...other} = <DownloadMsg>msg
+      consume({uuid, status, state: other })
+  })
 }
 
 
@@ -56,53 +71,6 @@ function listenIPCMsg(webview: WebviewTag) {
     const payload = event.args[0] || {}
     consume(payload)
   })
-}
-
-function listenDownloadEvent() {
-  const webContent = remote.getCurrentWebContents()
-  webContent.session.on('will-download', ((event1, item) => {
-    const dirPath = getPath('download')
-    if (!pathExists(dirPath)) mkdir(dirPath)
-    const name = item.getFilename().replace(/(\.\w+$)|\b$/, (w) => `_${moment().format('yyyyMMddHHmmss')}${w}`)
-    const filePath = path.join(dirPath, name)
-    const type = item.getMimeType()
-    const hook = downloadTaskList.pop()
-    if (!hook) return
-    item.on('updated', (event, state) => {
-      if (state === 'interrupted') {
-        console.log('Download is interrupted but can be resumed')
-      } else if (state === 'progressing') {
-        if (item.isPaused()) {
-          console.log('Download is paused')
-        } else {
-          console.log(`Received bytes: ${item.getReceivedBytes()}`)
-        }
-      }
-    })
-    item.once('done', (event, state) => {
-      if (state === 'completed') {
-        console.log('Download successfully')
-        hook.resolve({
-          uuid: hook.uuid,
-          status: 'SUCCESS',
-          path: filePath,
-          dirPath,
-          name,
-          type
-        })
-      } else {
-        hook.reject({
-          uuid: hook.uuid,
-          status: 'FAIL',
-          path: filePath,
-          dirPath,
-          name,
-          type
-        })
-      }
-    })
-    item.setSavePath(filePath)
-  }))
 }
 
 export const sendAction = (data: ActionTask) => {
@@ -120,7 +88,7 @@ export const sendAction = (data: ActionTask) => {
   }
 }
 
-export const setPromiseHook = (uuid: string, resolve: () => void, reject: () => void) =>  setHook(uuid, resolve, reject)
+export const setPromiseHook = (uuid: string, resolve: () => void, reject: () => void) => setHook(uuid, resolve, reject)
 export const setDownloadHook = (uuid: string, resolve: () => void, reject: () => void) => pushDownloadUuid(uuid, resolve, reject)
 
 
@@ -145,7 +113,7 @@ function consume(payload: IPCPayload) {
 export function setFile(action: ActionTask) {
   if (!_webView) return Promise.reject()
   const wc = _webView.getWebContents();
-  return  new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       wc.debugger.attach("1.1");
       wc.debugger.sendCommand("DOM.getDocument", {pierce: true, depth: 100}, function (err, res) {
@@ -186,7 +154,8 @@ export function setFile(action: ActionTask) {
     } catch (err) {
       console.error("Debugger attach failed : ", err);
       return reject(err)
-    };
+    }
+    ;
   })
 }
 
@@ -210,3 +179,49 @@ function getIframe(node: any, inFrame: string | boolean): any {
 
 
 // 错误：<div style="color:red"> Unexpect： Found EOFRecord before WindowTwoRecord was encountered </div>
+
+//
+// function listenDownloadEvent() {
+//   const webContent = remote.getCurrentWebContents()
+//   console.log(webContent.id)
+//   webContent.session.on('will-download', ((event1, item) => {
+//     console.log('Render willDownload')
+//
+//     const hook = downloadTaskList.pop()
+//     if (!hook) return
+//     item.on('updated', (event, state) => {
+//       if (state === 'interrupted') {
+//         console.log('Download is interrupted but can be resumed')
+//       } else if (state === 'progressing') {
+//         if (item.isPaused()) {
+//           console.log('Download is paused')
+//         } else {
+//           console.log(`Received bytes: ${item.getReceivedBytes()}`)
+//         }
+//       }
+//     })
+//     item.once('done', (event, state) => {
+//       if (state === 'completed') {
+//         console.log('Download successfully')
+//         hook.resolve({
+//           uuid: hook.uuid,
+//           status: 'SUCCESS',
+//           path: filePath,
+//           dirPath,
+//           name,
+//           type
+//         })
+//       } else {
+//         hook.reject({
+//           uuid: hook.uuid,
+//           status: 'FAIL',
+//           path: filePath,
+//           dirPath,
+//           name,
+//           type
+//         })
+//       }
+//     })
+//     item.setSavePath(filePath)
+//   }))
+// }

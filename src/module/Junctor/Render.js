@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, remote } from 'electron';
 import { ActionType } from "../Action";
 import { DOWNLOAD_CHANEL_KEY } from "./Main";
 class Hook {
@@ -16,19 +16,37 @@ class Hook {
     }
 }
 const hooksData = [];
+const downloadTaskList = [];
 const CHANNEL_KEY = 'ACTION';
 let _webView = null;
 export const renderRegister = (webview) => {
     _webView = webview;
+    listenIPCMsg(webview);
+    listenM2WIpc();
+};
+function pushDownloadUuid(uuid, resolve, reject) {
+    const curWindow = remote.getCurrentWindow();
+    setHook(uuid, resolve, reject);
+    const dPayload = {
+        windowId: curWindow.id,
+        uuid,
+        timeStamp: Date.now()
+    };
+    ipcRenderer.send(DOWNLOAD_CHANEL_KEY, dPayload);
+}
+function listenM2WIpc() {
+    ipcRenderer.on(DOWNLOAD_CHANEL_KEY, (events, msg) => {
+        const { uuid, status, ...other } = msg;
+        consume({ uuid, status, state: other });
+    });
+}
+function listenIPCMsg(webview) {
     webview.addEventListener('ipc-message', (event) => {
         console.log('ipc-message', event);
         const payload = event.args[0] || {};
         consume(payload);
     });
-    ipcRenderer.on(DOWNLOAD_CHANEL_KEY, (ev, data) => {
-        console.log(DOWNLOAD_CHANEL_KEY, data);
-    });
-};
+}
 export const sendAction = (data) => {
     if (_webView) {
         console.log('webview send', CHANNEL_KEY, data);
@@ -44,7 +62,7 @@ export const sendAction = (data) => {
     }
 };
 export const setPromiseHook = (uuid, resolve, reject) => setHook(uuid, resolve, reject);
-export const setDownloadHook = (uuid, resolve, reject) => setHook(uuid, resolve, reject);
+export const setDownloadHook = (uuid, resolve, reject) => pushDownloadUuid(uuid, resolve, reject);
 function setHook(uuid, resolve, reject) {
     hooksData.push(new Hook(uuid, resolve, reject));
 }
@@ -130,4 +148,50 @@ function getIframe(node, inFrame) {
         }
     }
 }
+// 错误：<div style="color:red"> Unexpect： Found EOFRecord before WindowTwoRecord was encountered </div>
+//
+// function listenDownloadEvent() {
+//   const webContent = remote.getCurrentWebContents()
+//   console.log(webContent.id)
+//   webContent.session.on('will-download', ((event1, item) => {
+//     console.log('Render willDownload')
+//
+//     const hook = downloadTaskList.pop()
+//     if (!hook) return
+//     item.on('updated', (event, state) => {
+//       if (state === 'interrupted') {
+//         console.log('Download is interrupted but can be resumed')
+//       } else if (state === 'progressing') {
+//         if (item.isPaused()) {
+//           console.log('Download is paused')
+//         } else {
+//           console.log(`Received bytes: ${item.getReceivedBytes()}`)
+//         }
+//       }
+//     })
+//     item.once('done', (event, state) => {
+//       if (state === 'completed') {
+//         console.log('Download successfully')
+//         hook.resolve({
+//           uuid: hook.uuid,
+//           status: 'SUCCESS',
+//           path: filePath,
+//           dirPath,
+//           name,
+//           type
+//         })
+//       } else {
+//         hook.reject({
+//           uuid: hook.uuid,
+//           status: 'FAIL',
+//           path: filePath,
+//           dirPath,
+//           name,
+//           type
+//         })
+//       }
+//     })
+//     item.setSavePath(filePath)
+//   }))
+// }
 //# sourceMappingURL=Render.js.map

@@ -72,9 +72,9 @@ export class Step extends EventEmitter {
         case ActionType.GetAttr:
         case ActionType.Download:
           if (this.parentTask) {
-            this.parentTask.state[key].value = res.state
+            this.parentTask.state[key].value = res.state.path
           } else {
-            this.state[key].value = res.state
+            this.state[key].value = res.state.path
           }
           break;
         default:

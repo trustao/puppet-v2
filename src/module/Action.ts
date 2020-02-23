@@ -44,9 +44,9 @@ export const action = async (actionType: ActionType, payload: ActionPayload) => 
     case ActionType.Promise:
       return await promiseAction(payload)
     case ActionType.Download:
-      const res = await downLoadAction(payload.selector)
+      const res = await downLoadAction(payload)
       console.log('download', res)
-      return res.reduce((a, b) => ({...a, ...b})) as IPCPayload
+      return res[0] as IPCPayload
       break
     case ActionType.Blur:
     case ActionType.Click:
@@ -77,18 +77,19 @@ async function promiseAction(payload: ActionPayload): Promise<IPCPayload> {
   }
 }
 
-function clickAction(selector: string) {
+function clickAction({selector, inFrame}: ActionPayload) {
   return baseAction({
     uuid: createKey(ActionType.Click),
     type: ActionType.Click,
-    selector
+    selector,
+    inFrame
   })
 }
 
-function downLoadAction(selector: string) : Promise<[IPCPayload, IPCPayload]> {
+function downLoadAction(payload: ActionPayload) : Promise<[IPCPayload, IPCPayload]> {
   return Promise.all([
     createDownloadAction(),
-    clickAction(selector)
+    clickAction(payload)
   ])
 }
 

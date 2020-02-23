@@ -9,7 +9,7 @@ export var ActionType;
     ActionType["Select"] = "SELECT";
     ActionType["GetAttr"] = "GET_ATTR";
     ActionType["GetText"] = "GET_TEXT";
-    ActionType["GetVAL"] = "GET_VALUE";
+    ActionType["GetValue"] = "GET_VALUE";
     ActionType["Download"] = "DOWNLOAD";
     ActionType["Blur"] = "BLUR";
     ActionType["Check"] = "CHECK";
@@ -24,17 +24,12 @@ export const action = async (actionType, payload) => {
     switch (actionType) {
         case ActionType.Wait:
             return await Task.waitMoment(payload.state && payload.state.time)();
-            break;
         case ActionType.Promise:
-            if (!payload.promiseFn)
-                return Promise.reject();
-            try {
-                const state = await payload.promiseFn(payload);
-                return { status: 'SUCCESS', state };
-            }
-            catch (err) {
-                return { status: 'FAIL', state: err };
-            }
+            return await promiseAction(payload);
+        case ActionType.Download:
+            const res = await downLoadAction(payload);
+            console.log('download', res);
+            return res[0];
             break;
         case ActionType.Blur:
         case ActionType.Click:
@@ -44,7 +39,6 @@ export const action = async (actionType, payload) => {
         case ActionType.Check:
         case ActionType.HasAttr:
         case ActionType.CheckExist:
-        case ActionType.Download:
         case ActionType.GetAttr:
         case ActionType.SetFile:
         default:
@@ -55,17 +49,29 @@ export const action = async (actionType, payload) => {
             });
     }
 };
-function clickAction(selector) {
+async function promiseAction(payload) {
+    if (!payload.promiseFn)
+        return Promise.reject();
+    try {
+        const state = await payload.promiseFn(payload);
+        return { uuid: '', status: 'SUCCESS', state };
+    }
+    catch (err) {
+        return { uuid: '', status: 'FAIL', state: err };
+    }
+}
+function clickAction({ selector, inFrame }) {
     return baseAction({
         uuid: createKey(ActionType.Click),
         type: ActionType.Click,
-        selector
+        selector,
+        inFrame
     });
 }
-function downLoadAction(selector) {
+function downLoadAction(payload) {
     return Promise.all([
         createDownloadAction(),
-        clickAction(selector)
+        clickAction(payload)
     ]);
 }
 function createDownloadAction() {

@@ -24,6 +24,9 @@ export class Task extends EventEmitter{
   taskSteps: Array<Step | IfStep> = []
   allowRetryCount?: number
   state: {[key: string]: any} = {}
+  get currentIndex ()　{
+    return this.curStep ? this.taskSteps.indexOf(this.curStep) : 0
+  }
 
   constructor (
     public name = '未命名任务',
@@ -125,18 +128,26 @@ export class Task extends EventEmitter{
         if (this.status === 'PAUSED' || this.status === 'STOP') return
         const retryCount = typeof this.allowRetryCount === 'number' ? this.allowRetryCount : this.curStep.retryCount
         if (this.curStep.errorCount > retryCount || 0) {
+          console.log('Task Error', retryCount, this.curStep.errorCount)
           this.status = 'ERROR'
+          this.curStep.errorCount = 0
+          this.run()
           return
         }
         const nextStep = this.curStep.next()
         if (nextStep && this.curStep instanceof Step) nextStep.status = 'READY'
         await this.curStep.run()
+        if (this.curStep.status === 'ERROR') {
+          throw new Error('Step Error')
+        }
       } catch (e) {
         console.error(e)
         this.curStep && this.curStep.errorCount++
-        await Task.waitMoment()()
+        await Task.waitMoment(1000)()
+        console.log('step error~~~~~~~~~~~~~~~~~~~~~~~~')
         continue
       }
+      console.log('step next~~~~~~~~~~~~~~~~~~~~~~~~~')
       this.curStep = this.curStep && this.curStep.next()
       console.log('[Next]: ' + (this.curStep &&　this.curStep.title))
       await Task.waitMoment()()
@@ -145,6 +156,7 @@ export class Task extends EventEmitter{
   }
 
   static waitMoment = (ts?: number) => (): Promise<IPCPayload> => new Promise(resolve => {
+    console.log('wait', ts)
     const t = typeof ts === 'number' ? ts : (Task.MOMENT_TS || 0)
     setTimeout(() => {
       resolve({uuid: '', status: 'SUCCESS', state: ''})

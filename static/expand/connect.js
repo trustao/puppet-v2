@@ -55,7 +55,10 @@ function invokeAction(action) {
       state = $el.attr(action.state).trim()
       break;
     case 'SELECT':
-      $el.val(action.state)
+      console.log(action.state)
+      const option = $el.find(`option:contains(${action.state})`)
+      console.log('选择', option, $el)
+      $el.val(option.length ? option.val() : action.state)
       $el[0].dispatchEvent(new Event('change'))
       break;
     case 'CHECK':
@@ -79,6 +82,7 @@ function invokeAction(action) {
       $el[0].dispatchEvent(new Event('blur'))
       break;
   }
+  console.log('stateeeee', $el, state)
   return state
 }
 

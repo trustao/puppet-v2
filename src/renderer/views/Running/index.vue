@@ -6,13 +6,15 @@
         ref="webview" :preload="preload"
         nodeintegration nodeIntegrationInSubFrames
         disablewebsecurity
-        src="http://localhost:4202" style="min-width: 1024px;height: 100vh"></webview>
-<!--        src="https://b.jclps.com" style="min-width: 1024px;height: 100vh"></webview>-->
+        src="https://jwms.jclps.com" style="min-width: 1024px;height: 100vh"></webview>
+      <!--        src="http://localhost:9900" style="min-width: 1024px;height: 100vh"></webview>-->
     </div>
     <div class="controller">
       <div class="controller-head">
         <a-button icon="left" @click="$router.push('/taskManage')">返回</a-button>
-        <a-button @click="sendAction">Test</a-button>
+        <a-button @click="run" type="primary" :loading="curTask.status === 'RUNNING'">Run</a-button>
+        <a-button @click="stop">Stop</a-button>
+<!--        <a-button @click="sendAction">Test</a-button>-->
         <a-button @click="openDevTools">开发者工具</a-button>
       </div>
       <a-card class="task-card" title="任务">
@@ -30,7 +32,7 @@
   import TaskInfo from '@/components/TaskInfo'
   import Scroller from '@/components/Scroller'
   import {renderRegister} from "../../../module/Junctor/Render";
-  import {action, ActionType} from "../../../module/Action";
+  import {mapGetters} from 'vuex'
 
   export default {
     name: 'Running',
@@ -40,7 +42,13 @@
         preload: 'file://' + __static + '/expand/connect.js'
       }
     },
+    computed: {
+      ...mapGetters({
+        curTask: 'Task/curTask'
+      }),
+    },
     methods: {
+
       sendAction() {
         const wc = this.$refs.webview.getWebContents()
         try {
@@ -91,6 +99,12 @@
       },
       openDevTools () {
         this.$refs.webview.openDevTools()
+      },
+      run () {
+        this.curTask.run()
+      },
+      stop () {
+        this.curTask.stop()
       }
     },
     mounted() {
@@ -125,7 +139,7 @@
     .controller {
       display: flex;
       flex-direction: column;
-      width: 500px;
+      width: 300px;
       background-color: #f8f9fa;
       .controller-head {
         display: flex;

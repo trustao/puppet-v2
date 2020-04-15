@@ -2,7 +2,7 @@ import {stepsGroup} from '../../../meta'
 import {Task} from '../../../module/newTask'
 
 const state = {
-  curTask: null,
+  curTask: new Task('t', stepsGroup[0].children),
   taskQueue: [],
   stepGroups: stepsGroup
 }

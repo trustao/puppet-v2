@@ -53,6 +53,9 @@
         console.log('run')
         step.run()
       }
+    },
+    mounted() {
+      console.log('~~~~~~~~~~~~~~~~~~', this.curTask)
     }
   }
 </script>

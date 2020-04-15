@@ -39,18 +39,21 @@ export class Step extends EventEmitter {
         const stateKeys = Object.keys(state ||　{})
         const key = state && stateKeys[0]
         const payload = <ActionPayload>{selector, ...others}
-        if (key && [ActionType.Input, ActionType.SetFile].includes(type)) {
-          const stateVal = (this.state[key] && !isBlank(this.state[key].value) && this.state[key].value) || (state[key] && state[key].default)
-          if (!stateVal) console.error(`[${key}] is ${stateVal}。\n 错误：${this.title},${this.state[key] && this.state[key].desc} 值为空。`)
-          payload.state = stateVal
+        if (type !== ActionType.Wait)  {
+          if (key && [ActionType.Input, ActionType.SetFile, ActionType.Select].includes(type)) {
+            const stateVal = (this.state[key] && !isBlank(this.state[key].value) && this.state[key].value) || (state[key] && state[key].default)
+            if (!stateVal) console.error(`[${key}] is ${stateVal}。\n 错误：${this.title},${this.state[key] && this.state[key].desc} 值为空。`)
+            payload.state = stateVal
+          } else {
+            payload.state = {}
+            stateKeys.forEach(k => {
+              payload.state[k] = this.state[k].value
+            })
+          }
         } else {
-          payload.state = {}
-          stateKeys.forEach(k => {
-            payload.state[k] = this.state[k].value
-          })
+          payload.state = state
         }
         const res = await action(type, payload)
-        console.log(this.parentTask, res)
         if (!res || res.status === 'FAIL') {
           console.error('操作失败', res)
           this.status = 'ERROR'
@@ -65,11 +68,18 @@ export class Step extends EventEmitter {
   }
 
   private stepDone (res: IPCPayload, key: string, type: ActionType) {
+    console.log('step done', key, res)
     if (key && res) {
       switch (type) {
         case ActionType.GetText:
         case ActionType.GetValue:
         case ActionType.GetAttr:
+          if (this.parentTask) {
+            this.parentTask.state[key].value = res.state
+          } else {
+            this.state[key].value = res.state
+          }
+          break;
         case ActionType.Download:
           if (this.parentTask) {
             this.parentTask.state[key].value = res.state.path

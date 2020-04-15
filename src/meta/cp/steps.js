@@ -40,6 +40,43 @@ function cpSteps() {
     },
   ], '进入采购入库页')
 
+  const selectCon = new Step({
+    ownerName_l: {
+      value: '河北酷硕贸易有限公司',
+      desc: '货主'
+    },
+    status: {
+      value: '0',
+      desc: '单据状态'
+    }
+  }, [
+    {// 点击验收 第一个
+      selector: '#inboundQueryForm #ownerName_l',
+      type: ActionType.Select,
+      state: {ownerName_l: {}},
+      inFrame: true
+    },
+   {// 点击验收 第一个
+      selector: '#inboundQueryForm #status',
+      type: ActionType.Select,
+      state: {status: {}},
+      inFrame: true
+    },
+    {
+      type: ActionType.Wait,
+      state: {time: 1000}
+    },
+    {
+      type: ActionType.Click,
+      selector: '#queryForm',
+      inFrame: true
+    },
+    {
+      type: ActionType.Wait,
+      state: {time: 2000}
+    },
+  ], '输入查询条件')
+
   const step3 = new Step({}, [
     {// 点击验收 第一个
       selector: '#purchaseTable tbody tr .opera #receiveBtn:visible',
@@ -91,6 +128,19 @@ function cpSteps() {
   })
   const step5_3 = new IfStep(() => true, '容器号重复，重新执行填写容器号', step4)
 
+  const checkList = new IfStep(
+    async () => {
+      await Task.waitMoment(3000)
+      const res = await action(ActionType.CheckExist, {
+        selector: '#inboundPurchaseReceiveNewTable tbody td:first input:visible',
+        inFrame: true
+      })
+      return !res.state
+    },
+    '检查列表加载完成'
+  )
+  checkList.setSteps(checkList)
+
   const step6 = new Step(
     {},
     [
@@ -116,7 +166,7 @@ function cpSteps() {
     async () => {
       let hasReadOnly = false, i = 0
       while (!hasReadOnly) {
-        await Task.waitMoment(1000)
+        await Task.waitMoment(5000)
         const res = await action(ActionType.HasAttr,
           {state: 'readonly', selector: '#batchin_containerNo', inFrame: true})
         hasReadOnly = res.state
@@ -128,7 +178,7 @@ function cpSteps() {
       return hasReadOnly
     },
     '检查容器号是否重复',
-    step6
+    checkList
   )
 
   const step7 = new Step(
@@ -151,7 +201,7 @@ function cpSteps() {
       [
         {
           type: ActionType.Wait,
-          state: {time: 3000}
+          state: {time: 10000}
         },
         {// 成功确认
           selector: '.mask:visible .prompt .prompt-buttons .btn-ok',
@@ -162,17 +212,35 @@ function cpSteps() {
       '确认'
     )
 
+  const back = new Step({}, [
+    {
+      type: ActionType.Click,
+      selector: '#tabs .tab-title li span:contains(采购入库)',
+      inFrame: true
+    },
+      {
+        type: ActionType.Wait,
+        state: {time: 3000}
+      },
+  ], '返回采购入库')
+
+  const repeat = new IfStep(() => true, '重复查询验收', step1)
+
   const productCheck = [
     step1,
     step2,
+    selectCon,
     step3,
     step4,
     step5_1,
     step5_2,
     step5_3,
+    checkList,
     step6,
     step7,
-    step8
+    step8,
+    back,
+    repeat
   ]
 
   const step9 = new Step(
@@ -211,7 +279,8 @@ function cpSteps() {
     async () => {
       await Task.waitMoment(3000)
       const res = await action(ActionType.CheckExist, {
-        selector: '#inboundPutawayOperateTable .realLocation:visible'
+        selector: '#inboundPutawayOperateTable .realLocation:visible',
+        inFrame: true
       })
       return !res.state
     },
@@ -222,7 +291,7 @@ function cpSteps() {
   const inputPisNo = new Step(
     {
       positionNo: {
-        value: '',
+        value: '1-A01-01-100-1',
         desc: '储位号'
       }
     },
@@ -261,12 +330,19 @@ function cpSteps() {
         inFrame: true,
         type: ActionType.Click
       },
+      {
+        type: ActionType.Wait,
+        state: {time: 10000}
+      },
     ],
     '点击替换,并确认'
   )
 
   const checkPN = new IfStep(
-     () => inputPisNo.state.positionNo.value,
+     () => {
+       console.log('dsfasdfsdafsd',inputPisNo.state.positionNo.value)
+       return !!inputPisNo.state.positionNo.value
+     },
     '是否有储位号',
     clickSJ
   )
@@ -310,12 +386,12 @@ function cpSteps() {
 
     const getPNo = new Step({
       positionNo: {
-        value: '',
+        value: '1-A01-01-100-1',
         desc: '储位号'
       }},
     [
       {
-        selector: '.mask #putawayDetailTable tbody td:nth-child(9)',
+        selector: '.mask #putawayDetailTable tbody tr:first td:nth-child(9)',
         state: {
           positionNo: {
             type: 'text'
@@ -370,6 +446,8 @@ function cpSteps() {
   const isSuc = new Step(
     {},
     [
+      {type: ActionType.Wait,
+        state: {time: 8000}},
       {// 成功确认
         selector: '.mask:visible .prompt .prompt-buttons .btn-ok',
         inFrame: true,
@@ -386,6 +464,7 @@ function cpSteps() {
 
 
   const productSale = [
+    step1,
     step9,
     checkPN,
 
@@ -398,17 +477,54 @@ function cpSteps() {
     checkListDone,
     inputPisNo,
     clickConfirm,
-    isSuc
+    isSuc,
+    new IfStep(() => true, '重复', step1)
   ]
 
 
   const login = new Step({
     name: {
-      value: '',
+      value: '花栏旗舰店',
       desc: '账号'
     },
     pwd: {
-      value: '',
+      value: 'ztqh2018',
+      desc: '密码'
+    },
+  }, [
+    {//输入账号
+      selector: '#loginname',
+      inFrame: '.login-frame',
+      state: {
+        name: {
+          default: '金康019'
+        }
+      },
+      type: ActionType.Input
+    },
+    {//输入密码
+      selector: '#nloginpwd',
+      inFrame: '.login-frame',
+      state: {
+        pwd: {
+          default: 'jinkang019'
+        }
+      },
+      type: ActionType.Input
+    },
+    {//输入密码
+      selector: '#paipaiLoginSubmit',
+      inFrame: '.login-frame',
+      type: ActionType.Click
+    }
+  ], '登录账户')
+  const loginb = new Step({
+    name: {
+      value: '花栏旗舰店',
+      desc: '账号'
+    },
+    pwd: {
+      value: 'ztqh2018',
       desc: '密码'
     },
   }, [
@@ -440,16 +556,29 @@ function cpSteps() {
   ], '登录账户')
 
   return [
-    login,
-    ...productCheck,
-    ...productSale
+    {
+      title: 'CP端验收',
+      key: 'GROUP-1',
+      children: [
+        // login,
+        ...productCheck,
+      ]
+    },
+    {
+      title: 'CP端上架',
+      key: 'GROUP-2',
+      children: [
+        // loginb,
+        ...productSale,
+      ]
+    }
   ]
 }
 
 const actionData = [
   // cp端 验收上架
   {// 点击仓库图标
-    selector: '.topbar__whse-info.el-tooltip',
+    selector: '.topbar__whse-info .topbar__whse-icon',
     type: 'click'
   },
   {// 进入仓库
@@ -612,13 +741,7 @@ const actionData = [
   },
 ]
 
-export const stepsGroup = [
-  {
-    title: 'CP端验收上架',
-    key: 'GROUP-1',
-    children: cpSteps()
-  }
-]
+export const stepsGroup = cpSteps()
 
 // function createSteps() {
 //   const step1 = new Step({

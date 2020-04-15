@@ -4,6 +4,7 @@ import {mkdir, pathExists, getPath} from "./readFile";
 import {webFrame} from 'electron'
 import moment from 'moment'
 import path from 'path'
+import fs from "fs";
 
 const FILE_TYPE = '.xls'
 
@@ -28,7 +29,7 @@ export async function SKUFiles2PopFiles(fileList) {
   while (list.length) {
     const file = list.shift()
     console.log('!!@', file)
-    const workbook = await readXlsxFromFile(file)
+    const workbook = readXlsxFromPath(file)
     const columnData =  getColumn(workbook, 'A')
     columnData.splice(0, 2) // 前两列不要
     const popList = await splitPopDoc(columnData)
@@ -38,16 +39,46 @@ export async function SKUFiles2PopFiles(fileList) {
   return res
 }
 
-export async function splitPopDoc(columnData) {
-  const max = docConfig.popShop.maxRow
+export async function zipXls2LogisticsFile(fileList, state) {
+  const list = [...fileList]
+  const res = []
+  while (list.length) {
+    const file = list.shift()
+    const workbook = readXlsxFromPath(file)
+    const columnData =  getColumn(workbook, 'D') // 事业部商品编码
+    columnData.splice(0, 2) // 前两列不要
+    const popList = await splitPopDoc(columnData, state, 'goods', 'logistics')
+    res.push(...popList)
+  }
+  console.log(res)
+  return res
+}
+
+export async function logisticsFile2StoreFile(fileList, state) {
+  const list = [...fileList]
+  const res = []
+  while (list.length) {
+    const file = list.shift()
+    const workbook = readXlsxFromPath(file)
+    const columnData =  getColumn(workbook, 'A') // 事业部商品编码
+    columnData.splice(0, 2) // 前两列不要
+    const popList = await splitPopDoc(columnData, state, 'purchase', 'store')
+    res.push(...popList)
+  }
+  console.log(res)
+  return res
+}
+
+export async function splitPopDoc(columnData, state = {}, configKey = 'popShop', type = 'pop') {
+  const max = docConfig[configKey].maxRow
   let start = 0
   let end = start + max - 1
   let now = Date.now().toString(36) + Math.random().toString(36).slice(3, 5)
   let dataArr = columnData.slice(start, end)
   const pathArr = []
   while (dataArr.length) {
-    const docPath = createFilePath('pop', `${now}-${start}-${end}`)
-    await createPopShopFile(dataArr, {},  docPath)
+    const docPath = createFilePath(type, `${now}-${start}-${end}`)
+    await createPopShopFile(dataArr, state,  docPath, configKey)
     pathArr.push(docPath + FILE_TYPE)
     start = end
     end =  start + max - 1
@@ -57,8 +88,9 @@ export async function splitPopDoc(columnData) {
 }
 
 
-export async function createPopShopFile(data, state = {}, path) {
-  const {head, fillCol, fillKey} = docConfig.popShop.template
+export async function createPopShopFile(data, state = {}, path, configKey) {
+  console.log(data, state)
+  const {head, fillCol, fillKey} = docConfig[configKey].template
   const dataJson = [
     [...head],
   ]
@@ -132,6 +164,8 @@ export function readXlsxFromPath(path) {
 }
 
 export function readXlsxFromFile(file) {
+  console.log('file', file)
+  if (!fs.existsSync(file)) return Promise.reject({status: 'FAIL', msg: "文件不存在"})
   return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = function(e) {
